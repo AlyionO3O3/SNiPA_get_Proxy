@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct  3 04:39:07 2022
+
+@author: alyion
+"""
+import pandas as pd
+import numpy as np
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import ElementClickInterceptedException
+import time
+
+inpath = "/Users/alyion/Desktop/TFBS_LSY/"
+
+snp_list = []
+path = inpath + '❖SNP_list.txt'
+with open(path) as f:
+    for line in f.readlines():
+        snp_list.append(line.rsplit())
+ 
+def get_SNiPA_df(snpID):
+    options = Options()
+    options.add_argument("--disable-notifications")
+     
+    chrome = webdriver.Chrome('./chromedriver', chrome_options=options)
+    chrome.get("https://snipa.helmholtz-muenchen.de/snipa/index.php?task=proxy_search")
+    
+    time.sleep(3)
+    chrome.find_element(By.CSS_SELECTOR, "[aria-label='dismiss cookie message']").click()
+    
+    snp = chrome.find_element(By.ID, "snps_sentinels_input")
+    select = Select(chrome.find_element(By.ID,'dataset-population'))
+    select.select_by_value("eas")
+    
+    time.sleep(3)
+    snp.send_keys(snpID)
+    
+    time.sleep(7)
+    button = chrome.find_element(By.ID,"submit-button")
+    button.click()
+    
+    time.sleep(6)
+    button2 = chrome.find_element(By.ID,"proxy-results-table-coltoggle-link10")
+    button2.click()
+    num_rows = chrome.find_elements(By.XPATH,'//*[@id="proxy-results-table"]/tbody/tr')
+
+    tr = []
+    for row in num_rows:
+        tdlist = row.find_elements(By.TAG_NAME,"td")
+        td = []
+        for col in tdlist:
+            td.append(col.text)
+        tr.append(td)
+    return tr
+    chrome.quit()
+
+df = pd.DataFrame()
+i = len(snp_list)
+for snpID in snp_list:
+    for j in range(3):
+        try:
+            tr = get_SNiPA_df(snpID)
+            tr = pd.DataFrame(tr)
+            tr.columns = [["Sentinel","Proxy","Chr.","Proxy Pos.","Distance (bp)","LD r²","LD D"	,"LD D'","Proxy Allele A","Proxy Allele B","Allele B Frequency"]]
+            df = df.append(tr)
+            i -= 1
+            print(f"{i} SNPs left to search...")
+        except ElementClickInterceptedException:
+            print("Fail to click... Retrying in 3 sec...")
+            time.sleep(3)
+            tr = get_SNiPA_df(snpID)
+            tr = pd.DataFrame(tr)
+            tr.columns = [["Sentinel","Proxy","Chr.","Proxy Pos.","Distance (bp)","LD r²","LD D"	,"LD D'","Proxy Allele A","Proxy Allele B","Allele B Frequency"]]
+            df = df.append(tr)
+            i -= 1
+            print(f"{i} SNPs left to search...")
+            continue
+        break
+    
+df.to_csv("/Users/alyion/Desktop/TFBS_LSY/❖SNiPA.csv", index = False)
