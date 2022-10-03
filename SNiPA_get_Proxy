@@ -11,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import Select
-from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.common.exceptions import ElementClickInterceptedException, NoSuchElementException
 import time
 
 inpath = "/Users/alyion/Desktop/TFBS_LSY/"
@@ -57,11 +57,11 @@ def get_SNiPA_df(snpID):
         tr.append(td)
     return tr
     chrome.quit()
-
+noLD_list = []
 df = pd.DataFrame()
 i = len(snp_list)
-for snpID in snp_list:
-    for j in range(3):
+for snpID in snp_list[124:125]:
+    for j in range(5):
         try:
             tr = get_SNiPA_df(snpID)
             tr = pd.DataFrame(tr)
@@ -70,7 +70,7 @@ for snpID in snp_list:
             i -= 1
             print(f"{i} SNPs left to search...")
         except ElementClickInterceptedException:
-            print("Fail to click... Retrying in 3 sec...")
+            print("Fail to retrieve... Retrying in 3 sec...")
             time.sleep(3)
             tr = get_SNiPA_df(snpID)
             tr = pd.DataFrame(tr)
@@ -78,7 +78,12 @@ for snpID in snp_list:
             df = df.append(tr)
             i -= 1
             print(f"{i} SNPs left to search...")
+        except  NoSuchElementException:
+            print("Retrieve nothing...")
+            i -= 1
+            noLD_list.append(snpID)
+            print(f"{i} SNPs left to search...")
             continue
-        break
+    break
     
 df.to_csv("/Users/alyion/Desktop/TFBS_LSY/❖SNiPA.csv", index = False)
