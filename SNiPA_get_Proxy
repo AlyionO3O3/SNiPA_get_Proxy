@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct  3 04:39:07 2022
-
 @author: alyion
 """
 import pandas as pd
-import numpy as np
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -14,15 +12,12 @@ from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import ElementClickInterceptedException, NoSuchElementException
 import time
 
-inpath = "/Users/alyion/Desktop/TFBS_LSY/"
+##############################
+#     Function功能設定區域     #
+##############################
 
-snp_list = []
-path = inpath + '❖SNP_list.txt'
-with open(path) as f:
-    for line in f.readlines():
-        snp_list.append(line.rsplit())
- 
 def get_SNiPA_df(snpID):
+
     options = Options()
     options.add_argument("--disable-notifications")
      
@@ -57,33 +52,43 @@ def get_SNiPA_df(snpID):
         tr.append(td)
     return tr
     chrome.quit()
+
+######################################
+#  Step.1 輸入每個TF的Chip存入同一份csv #
+######################################
+
+inpath = "/Users/alyion/Desktop/TFBS_LSY/"
+
+snp_list = []
+path = inpath + '❖SNP_list.txt'
+with open(path) as f:
+    for line in f.readlines():
+        snp_list.append(line.rsplit())
+
 noLD_list = []
+attempts = 0
 df = pd.DataFrame()
 i = len(snp_list)
-for snpID in snp_list[124:125]:
-    for j in range(5):
+for snpID in snp_list:
+    while attempts < 5:
         try:
             tr = get_SNiPA_df(snpID)
             tr = pd.DataFrame(tr)
-            tr.columns = [["Sentinel","Proxy","Chr.","Proxy Pos.","Distance (bp)","LD r²","LD D"	,"LD D'","Proxy Allele A","Proxy Allele B","Allele B Frequency"]]
+            tr.columns = [["Sentinel","Proxy","Chr.","Proxy Pos.","Distance (bp)","LD r²","LD D" ,"LD D'","Proxy Allele A","Proxy Allele B","Allele B Frequency"]]
             df = df.append(tr)
             i -= 1
             print(f"{i} SNPs left to search...")
         except ElementClickInterceptedException:
+            attempts += 1
             print("Fail to retrieve... Retrying in 3 sec...")
             time.sleep(3)
-            tr = get_SNiPA_df(snpID)
-            tr = pd.DataFrame(tr)
-            tr.columns = [["Sentinel","Proxy","Chr.","Proxy Pos.","Distance (bp)","LD r²","LD D"	,"LD D'","Proxy Allele A","Proxy Allele B","Allele B Frequency"]]
-            df = df.append(tr)
-            i -= 1
-            print(f"{i} SNPs left to search...")
+            continue
         except  NoSuchElementException:
             print("Retrieve nothing...")
             i -= 1
             noLD_list.append(snpID)
             print(f"{i} SNPs left to search...")
-            continue
-    break
+            break
+        break
     
-df.to_csv("/Users/alyion/Desktop/TFBS_LSY/❖SNiPA.csv", index = False)
+df.to_csv(inpath + "❖SNiPA.csv", index = False)
